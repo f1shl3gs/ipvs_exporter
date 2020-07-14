@@ -36,15 +36,15 @@ type Collector struct {
 
 func New() prometheus.Collector {
 	return &Collector{
-		vipConnections: prometheus.NewDesc("ipvs_virtual_ip_conns", "connections of this address",
+		vipConnections: prometheus.NewDesc("ipvs_virtual_server_conns", "connections of this address",
 			[]string{"protocol", "address"}, nil),
-		vipInPkts: prometheus.NewDesc("ipvs_virtual_ip_in_packets", "packets received",
+		vipInPkts: prometheus.NewDesc("ipvs_virtual_server_in_packets", "packets received",
 			[]string{"protocol", "address"}, nil),
-		vipOutPkts: prometheus.NewDesc("ipvs_virtual_ip_out_packets", "packets send",
+		vipOutPkts: prometheus.NewDesc("ipvs_virtual_server_out_packets", "packets send",
 			[]string{"protocol", "address"}, nil),
-		vipInBytes: prometheus.NewDesc("ipvs_virtual_ip_in_bytes", "bytes received",
+		vipInBytes: prometheus.NewDesc("ipvs_virtual_server_in_bytes", "bytes received",
 			[]string{"protocol", "address"}, nil),
-		vipOutBytes: prometheus.NewDesc("ipvs_virtual_ip_out_bytes", "bytes send",
+		vipOutBytes: prometheus.NewDesc("ipvs_virtual_server_out_bytes", "bytes send",
 			[]string{"protocol", "address"}, nil),
 
 		backendConnections: prometheus.NewDesc("ipvs_backend_conns", "connections of backend",
