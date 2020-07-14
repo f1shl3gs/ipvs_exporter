@@ -21,34 +21,57 @@ var (
 type Collector struct {
 	readStats func() ([]byte, error)
 
-	connections *prometheus.Desc
-	inPkts      *prometheus.Desc
-	outPkts     *prometheus.Desc
-	inBytes     *prometheus.Desc
-	outBytes    *prometheus.Desc
+	vipConnections *prometheus.Desc
+	vipInPkts      *prometheus.Desc
+	vipOutPkts     *prometheus.Desc
+	vipInBytes     *prometheus.Desc
+	vipOutBytes    *prometheus.Desc
+
+	backendConnections *prometheus.Desc
+	backendInPkts      *prometheus.Desc
+	backendOutPkts     *prometheus.Desc
+	backendInBytes     *prometheus.Desc
+	backendOutBytes    *prometheus.Desc
 }
 
 func New() prometheus.Collector {
 	return &Collector{
-		connections: prometheus.NewDesc("ipvs_conn", "connections of this address",
-			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		inPkts: prometheus.NewDesc("ipvs_in_packets", "packets received",
-			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		outPkts: prometheus.NewDesc("ipvs_out_packets", "packets send",
-			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		inBytes: prometheus.NewDesc("ipvs_in_bytes", "bytes received",
-			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		outBytes: prometheus.NewDesc("ipvs_out_bytes", "bytes send",
-			[]string{"protocol", "local_addr", "remote_addr"}, nil),
+		vipConnections: prometheus.NewDesc("ipvs_virtual_ip_conns", "connections of this address",
+			[]string{"protocol", "address"}, nil),
+		vipInPkts: prometheus.NewDesc("ipvs_virtual_ip_in_packets", "packets received",
+			[]string{"protocol", "address"}, nil),
+		vipOutPkts: prometheus.NewDesc("ipvs_virtual_ip_out_packets", "packets send",
+			[]string{"protocol", "address"}, nil),
+		vipInBytes: prometheus.NewDesc("ipvs_virtual_ip_in_bytes", "bytes received",
+			[]string{"protocol", "address"}, nil),
+		vipOutBytes: prometheus.NewDesc("ipvs_virtual_ip_out_bytes", "bytes send",
+			[]string{"protocol", "address"}, nil),
+
+		backendConnections: prometheus.NewDesc("ipvs_backend_conns", "connections of backend",
+			[]string{"protocol", "vip", "address"}, nil),
+		backendInPkts: prometheus.NewDesc("ipvs_backend_in_packets", "packets received",
+			[]string{"protocol", "vip", "address"}, nil),
+		backendOutPkts: prometheus.NewDesc("ipvs_backend_out_packets", "packets send",
+			[]string{"protocol", "vip", "address"}, nil),
+		backendInBytes: prometheus.NewDesc("ipvs_backend_in_bytes", "bytes received",
+			[]string{"protocol", "vip", "address"}, nil),
+		backendOutBytes: prometheus.NewDesc("ipvs_backend_out_bytes", "bytes send",
+			[]string{"protocol", "vip", "address"}, nil),
 	}
 }
 
 func (c *Collector) Describe(descs chan<- *prometheus.Desc) {
-	descs <- c.connections
-	descs <- c.inPkts
-	descs <- c.outPkts
-	descs <- c.inBytes
-	descs <- c.outBytes
+	descs <- c.vipConnections
+	descs <- c.vipInPkts
+	descs <- c.vipOutPkts
+	descs <- c.vipInBytes
+	descs <- c.vipOutBytes
+
+	descs <- c.backendConnections
+	descs <- c.backendInPkts
+	descs <- c.backendOutPkts
+	descs <- c.backendInBytes
+	descs <- c.backendOutBytes
 }
 
 func (c *Collector) Collect(metrics chan<- prometheus.Metric) {
@@ -58,7 +81,7 @@ func (c *Collector) Collect(metrics chan<- prometheus.Metric) {
 	}
 
 	n := 0
-	var localAddress string
+	var vip string
 	var protocol string
 	buf := bytes.NewBuffer(data)
 	for {
@@ -83,20 +106,23 @@ func (c *Collector) Collect(metrics chan<- prometheus.Metric) {
 			continue
 		}
 
-		if addr == "" {
-			panic(line)
-		}
-
 		if strings.HasPrefix(line, "TCP") {
 			protocol = "TCP"
-			localAddress = addr
+			vip = addr
+
+			metrics <- prometheus.MustNewConstMetric(c.vipConnections, prometheus.GaugeValue, float64(conns), protocol, addr)
+			metrics <- prometheus.MustNewConstMetric(c.vipInPkts, prometheus.CounterValue, float64(inPkts), protocol, addr)
+			metrics <- prometheus.MustNewConstMetric(c.vipOutPkts, prometheus.CounterValue, float64(outPkts), protocol, addr)
+			metrics <- prometheus.MustNewConstMetric(c.vipInBytes, prometheus.CounterValue, float64(inBytes), protocol, addr)
+			metrics <- prometheus.MustNewConstMetric(c.vipOutBytes, prometheus.CounterValue, float64(outBytes), protocol, addr)
+			continue
 		}
 
-		metrics <- prometheus.MustNewConstMetric(c.connections, prometheus.GaugeValue, float64(conns), protocol, localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.inPkts, prometheus.CounterValue, float64(inPkts), protocol, localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.outPkts, prometheus.CounterValue, float64(outPkts), protocol, localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.inBytes, prometheus.CounterValue, float64(inBytes), protocol, localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.outBytes, prometheus.CounterValue, float64(outBytes), protocol, localAddress, addr)
+		metrics <- prometheus.MustNewConstMetric(c.backendConnections, prometheus.GaugeValue, float64(conns), protocol, vip, addr)
+		metrics <- prometheus.MustNewConstMetric(c.backendInPkts, prometheus.CounterValue, float64(inPkts), protocol, vip, addr)
+		metrics <- prometheus.MustNewConstMetric(c.backendOutPkts, prometheus.CounterValue, float64(outPkts), protocol, vip, addr)
+		metrics <- prometheus.MustNewConstMetric(c.backendInBytes, prometheus.CounterValue, float64(inBytes), protocol, vip, addr)
+		metrics <- prometheus.MustNewConstMetric(c.backendOutBytes, prometheus.CounterValue, float64(outBytes), protocol, vip, addr)
 	}
 }
 
