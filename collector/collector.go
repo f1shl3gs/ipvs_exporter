@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"strconv"
+	"io/ioutil"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	readStats func() ([]byte, error)
+	readStats = func() ([]byte, error) {
+		return ioutil.ReadFile("collector/stats.txt")
+	}
 )
 
 type Collector struct {
@@ -27,15 +30,15 @@ type Collector struct {
 
 func New() prometheus.Collector {
 	return &Collector{
-		connections: prometheus.NewDesc("dpdk_conn", "connections of this address",
+		connections: prometheus.NewDesc("ipvs_conn", "connections of this address",
 			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		inPkts: prometheus.NewDesc("dpdk_in_packets", "packets received",
+		inPkts: prometheus.NewDesc("ipvs_in_packets", "packets received",
 			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		outPkts: prometheus.NewDesc("dpdk_out_packets", "packets send",
+		outPkts: prometheus.NewDesc("ipvs_out_packets", "packets send",
 			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		inBytes: prometheus.NewDesc("dpdk_in_bytes", "bytes received",
+		inBytes: prometheus.NewDesc("ipvs_in_bytes", "bytes received",
 			[]string{"protocol", "local_addr", "remote_addr"}, nil),
-		outBytes: prometheus.NewDesc("dpdk_out_bytes", "bytes send",
+		outBytes: prometheus.NewDesc("ipvs_out_bytes", "bytes send",
 			[]string{"protocol", "local_addr", "remote_addr"}, nil),
 	}
 }
@@ -56,6 +59,7 @@ func (c *Collector) Collect(metrics chan<- prometheus.Metric) {
 
 	n := 0
 	var localAddress string
+	var protocol string
 	buf := bytes.NewBuffer(data)
 	for {
 		line, err := buf.ReadString('\n')
@@ -79,48 +83,53 @@ func (c *Collector) Collect(metrics chan<- prometheus.Metric) {
 			continue
 		}
 
+		if addr == "" {
+			panic(line)
+		}
+
 		if strings.HasPrefix(line, "TCP") {
+			protocol = "TCP"
 			localAddress = addr
 		}
 
-		metrics <- prometheus.MustNewConstMetric(c.connections, prometheus.GaugeValue, float64(conns), localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.inPkts, prometheus.CounterValue, float64(inPkts), localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.outPkts, prometheus.CounterValue, float64(outPkts), localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.inBytes, prometheus.CounterValue, float64(inBytes), localAddress, addr)
-		metrics <- prometheus.MustNewConstMetric(c.outBytes, prometheus.CounterValue, float64(outBytes), localAddress, addr)
+		metrics <- prometheus.MustNewConstMetric(c.connections, prometheus.GaugeValue, float64(conns), protocol, localAddress, addr)
+		metrics <- prometheus.MustNewConstMetric(c.inPkts, prometheus.CounterValue, float64(inPkts), protocol, localAddress, addr)
+		metrics <- prometheus.MustNewConstMetric(c.outPkts, prometheus.CounterValue, float64(outPkts), protocol, localAddress, addr)
+		metrics <- prometheus.MustNewConstMetric(c.inBytes, prometheus.CounterValue, float64(inBytes), protocol, localAddress, addr)
+		metrics <- prometheus.MustNewConstMetric(c.outBytes, prometheus.CounterValue, float64(outBytes), protocol, localAddress, addr)
 	}
 }
 
-func parseLine(text string) (string, int64, int64, int64, int64, int64, error) {
+func parseLine(text string) (string, uint64, uint64, uint64, uint64, uint64, error) {
 	fields := strings.Fields(text)
 	if len(fields) != 7 {
 		return "", 0, 0, 0, 0, 0, errors.Errorf("split stats line failed")
 	}
 
 	addr := fields[1]
-	conns, err := strconv.ParseInt(fields[2], 10, 64)
+	conns, err := humanize.ParseBytes(fields[2])
 	if err != nil {
 		return "", 0, 0, 0, 0, 0, err
 	}
 
-	inPkts, err := strconv.ParseInt(fields[3], 10, 64)
+	inPkts, err := humanize.ParseBytes(fields[3])
 	if err != nil {
-		return "", 0, 0, 0, 0, 0, nil
+		return "", 0, 0, 0, 0, 0, err
 	}
 
-	outPkts, err := strconv.ParseInt(fields[4], 10, 64)
+	outPkts, err := humanize.ParseBytes(fields[4])
 	if err != nil {
-		return "", 0, 0, 0, 0, 0, nil
+		return "", 0, 0, 0, 0, 0, err
 	}
 
-	inBytes, err := strconv.ParseInt(fields[5], 10, 64)
+	inBytes, err := humanize.ParseBytes(fields[5])
 	if err != nil {
-		return "", 0, 0, 0, 0, 0, nil
+		return "", 0, 0, 0, 0, 0, err
 	}
 
-	outBytes, err := strconv.ParseInt(fields[6], 10, 64)
+	outBytes, err := humanize.ParseBytes(fields[6])
 	if err != nil {
-		return "", 0, 0, 0, 0, 0, nil
+		return "", 0, 0, 0, 0, 0, err
 	}
 
 	return addr, conns, inPkts, outPkts, inBytes, outBytes, nil
