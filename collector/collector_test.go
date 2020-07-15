@@ -8,7 +8,7 @@ import (
 
 func TestParseline(t *testing.T) {
 	line := `TCP  10.33.184.4:3306                    2      164     6560      100     4000`
-	addr, conns, inPkts, outPkts, inBytes, outBytes, err := parseLine(line)
+	addr, conns, inPkts, outPkts, inBytes, outBytes, err := parseStats(line)
 	require.NoError(t, err)
 
 	require.EqualValues(t, "10.33.184.4:3306", addr)
