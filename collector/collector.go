@@ -18,7 +18,7 @@ import (
 
 var (
 	readStats = func(ctx context.Context) ([]byte, error) {
-		cmd := exec.CommandContext(ctx, "ipvsadm", "-l", "-stats")
+		cmd := exec.CommandContext(ctx, "ipvsadm", "-l", "--stats", "-n")
 		return cmd.CombinedOutput()
 	}
 
@@ -53,7 +53,7 @@ type Collector struct {
 
 func New() prometheus.Collector {
 	return &Collector{
-		vipConnections: prometheus.NewDesc("ipvs_connections",
+		vipConnections: prometheus.NewDesc("ipvs_connections_total",
 			"the total number of connections made",
 			[]string{"protocol", "address"}, nil),
 		vipInPkts: prometheus.NewDesc("ipvs_incoming_packets_total",
