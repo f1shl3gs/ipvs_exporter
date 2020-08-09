@@ -19,7 +19,7 @@ func main() {
 
 	listen := os.Getenv("IPVS_EXPORTER_LISTEN")
 	if listen == "" {
-		listen = ":5382"
+		listen = ":5389"
 	}
 
 	log.Infof("start http service, listen: %q", listen)
