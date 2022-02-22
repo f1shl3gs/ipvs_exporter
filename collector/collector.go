@@ -23,7 +23,7 @@ var (
 
 		exitCode := cmd.ProcessState.ExitCode()
 		if exitCode != 0 {
-			return nil, errors.Errorf("Unexpected exit code %d while trying to read stats", exitCode)
+			return nil, errors.Errorf("Unexpected exit code %d while trying to read stats. output: %s", exitCode, string(data))
 		}
 
 		return data, err
@@ -35,7 +35,7 @@ var (
 
 		exitCode := cmd.ProcessState.ExitCode()
 		if exitCode != 0 {
-			return nil, errors.Errorf("Unexpected exit code %d while trying to read list", exitCode)
+			return nil, errors.Errorf("Unexpected exit code %d while trying to read list. output: %s", exitCode, string(data))
 		}
 
 		return data, err
