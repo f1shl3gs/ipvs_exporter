@@ -19,12 +19,26 @@ import (
 var (
 	readStats = func(ctx context.Context) ([]byte, error) {
 		cmd := exec.CommandContext(ctx, "ipvsadm", "-l", "--stats", "-n")
-		return cmd.CombinedOutput()
+		data, err := cmd.CombinedOutput()
+
+		exitCode := cmd.ProcessState.ExitCode()
+		if exitCode != 0 {
+			return nil, errors.Errorf("Unexpected exit code %d while trying to read stats", exitCode)
+		}
+
+		return data, err
 	}
 
 	readList = func(ctx context.Context) ([]byte, error) {
 		cmd := exec.CommandContext(ctx, "ipvsadm", "-l", "-n")
-		return cmd.CombinedOutput()
+		data, err := cmd.CombinedOutput()
+
+		exitCode := cmd.ProcessState.ExitCode()
+		if exitCode != 0 {
+			return nil, errors.Errorf("Unexpected exit code %d while trying to read list", exitCode)
+		}
+
+		return data, err
 	}
 )
 
