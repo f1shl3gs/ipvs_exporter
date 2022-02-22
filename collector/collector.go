@@ -29,8 +29,6 @@ var (
 )
 
 type Collector struct {
-	readStats func() ([]byte, error)
-
 	vipConnections *prometheus.Desc
 	vipInPkts      *prometheus.Desc
 	vipOutPkts     *prometheus.Desc
